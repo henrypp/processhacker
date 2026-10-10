@@ -3009,7 +3009,6 @@ LRESULT PhTnpOnUserMessage(
     case TNM_SETEMPTYTEXT:
         {
             PPH_STRINGREF text = (PPH_STRINGREF)LParam;
-            ULONG flags = (ULONG)WParam;
 
             Context->EmptyText = *text;
 
@@ -7563,6 +7562,73 @@ BOOLEAN PhTnpCanScroll(
         return scrollInfo.nPos > scrollInfo.nMin;
     }
 }
+
+/**
+ * Creates a buffered device context and bitmap for double-buffered drawing.
+ *
+ * \param Context Pointer to the PPH_TREENEW_CONTEXT structure.
+ * \param Hdc Handle to the device context to be buffered.
+ */
+VOID PhTnpCreateBufferedContext(
+    _In_ PPH_TREENEW_CONTEXT Context,
+    _In_ HDC Hdc
+    )
+{
+    Context->BufferedContext = CreateCompatibleDC(Hdc);
+
+    if (!Context->BufferedContext)
+        return;
+
+    Context->BufferedContextRect = Context->ClientRect;
+    Context->BufferedBitmap = PhCreateDIBSection(
+        Hdc,
+        PHBF_TOPDOWNDIB,
+        Context->BufferedContextRect.right + 1, // leave one extra pixel for divider animation
+        Context->BufferedContextRect.bottom,
+        NULL
+        );
+
+    if (!Context->BufferedBitmap)
+    {
+        DeleteDC(Context->BufferedContext);
+        Context->BufferedContext = NULL;
+        return;
+    }
+
+    Context->BufferedOldBitmap = SelectBitmap(Context->BufferedContext, Context->BufferedBitmap);
+}
+
+/**
+ * Destroys the buffered device context and bitmap, cleaning up resources.
+ *
+ * \param Context Pointer to the PPH_TREENEW_CONTEXT structure.
+ */
+VOID PhTnpDestroyBufferedContext(
+    _In_ PPH_TREENEW_CONTEXT Context
+    )
+{
+    // The original bitmap must be selected back into the context, otherwise the bitmap can't be
+    // deleted.
+
+    if (Context->BufferedOldBitmap)
+    {
+        SelectBitmap(Context->BufferedContext, Context->BufferedOldBitmap);
+        Context->BufferedOldBitmap = NULL;
+    }
+
+    if (Context->BufferedBitmap)
+    {
+        DeleteBitmap(Context->BufferedBitmap);
+        Context->BufferedBitmap = NULL;
+    }
+
+    if (Context->BufferedContext)
+    {
+        DeleteDC(Context->BufferedContext);
+        Context->BufferedContext = NULL;
+    }
+}
+
 
 /**
  * Paints the tree view control.
