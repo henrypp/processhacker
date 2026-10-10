@@ -183,6 +183,7 @@
     <ClCompile Include="guisup.c" />
     <ClCompile Include="guisuplistview.cpp" />
     <ClCompile Include="handle.c" />
+    <ClCompile Include="treehdr.c" />
     <ClCompile Include="hexedit.c" />
     <ClCompile Include="hndlinfo.c" />
     <ClCompile Include="http.c" />
